@@ -1,4 +1,4 @@
-import ChatAssistant from './components/ChatAssistant'
+import { ChatAssistant } from './components/ChatAssistant'
 
 function App() {
   return <ChatAssistant />
