@@ -58,10 +58,10 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
   }, []);
 
   const handleStreamData = useCallback((data: StreamData) => {
-    updateLastAssistantMessage(msg => ({
-      ...msg,
-      content: msg.content + (data.content || ''),
-      reasoningContent: msg.reasoningContent + (data.reasoning_content || ''),
+    updateLastAssistantMessage(() => ({
+      role: 'assistant',
+      content: data.content || '',
+      reasoningContent: data.reasoning_content || '',
     }));
   }, [updateLastAssistantMessage]);
 
