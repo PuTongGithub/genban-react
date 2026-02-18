@@ -310,9 +310,10 @@
   line-height: 1.5;
   resize: none;
   outline: none;
-  max-height: 120px;
+  max-height: 144px;
   min-height: 24px;
   font-family: inherit;
+  overflow-y: auto;
 }
 
 .message-input::placeholder {

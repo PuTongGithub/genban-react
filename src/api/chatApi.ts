@@ -119,8 +119,8 @@ class ChatApi {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            sessionId: request.sessionId,
-            userInput: request.userInput,
+            session_id: request.session_id,
+            user_input: request.user_input,
             model: request.model,
           }),
         },

@@ -1,3 +1,5 @@
+import { useRef, useEffect } from 'react';
+
 interface ChatInputProps {
   value: string;
   isLoading: boolean;
@@ -13,6 +15,23 @@ export function ChatInput({
   onChange,
   onSend,
 }: ChatInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = 'auto';
+    const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
+    const maxHeight = lineHeight * 6;
+    const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+    textarea.style.height = `${newHeight}px`;
+  };
+
+  useEffect(() => {
+    adjustHeight();
+  }, [value]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -24,6 +43,7 @@ export function ChatInput({
     <div className="input-container">
       <div className="input-wrapper">
         <textarea
+          ref={textareaRef}
           className="message-input"
           value={value}
           onChange={(e) => onChange(e.target.value)}

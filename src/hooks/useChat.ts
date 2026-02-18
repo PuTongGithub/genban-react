@@ -92,8 +92,8 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
     try {
       await chatApi.sendMessage(
         {
-          sessionId,
-          userInput: userMessage,
+          session_id: sessionId,
+          user_input: userMessage,
           model: selectedModel,
         },
         handleStreamData,
