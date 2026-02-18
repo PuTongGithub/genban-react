@@ -159,6 +159,7 @@ class ChatApi {
     const reader = body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let currentEvent = '';
 
     try {
       while (true) {
@@ -176,20 +177,53 @@ class ChatApi {
 
         for (const line of lines) {
           const trimmedLine = line.trim();
+          
+          if (trimmedLine.startsWith('event:')) {
+            currentEvent = trimmedLine.slice(6).trim();
+            continue;
+          }
+          
           if (trimmedLine.startsWith('data:')) {
             const dataStr = trimmedLine.slice(5).trim();
-            if (dataStr === '[DONE]' || !dataStr) continue;
-
+            
+            if (currentEvent === 'complete') {
+              console.log('[API] 收到 complete 事件');
+              return;
+            }
+            
+            if (currentEvent === 'error') {
+              try {
+                const data = JSON.parse(dataStr);
+                console.error('[API Error] 收到 error 事件:', data.error);
+                onError(data.error);
+              } catch (e) {
+                console.error('[API Error] 解析 error 事件失败:', e);
+                onError(dataStr);
+              }
+              continue;
+            }
+            
+            if (currentEvent === 'message') {
+              if (!dataStr) continue;
+              try {
+                const data = JSON.parse(dataStr);
+                console.log('[API Stream Data]', data);
+                onStream(data as StreamData);
+              } catch (e) {
+                console.error('[API Error] 解析 message 数据失败:', e, 'Data:', dataStr);
+              }
+              continue;
+            }
+            
+            if (!dataStr || dataStr === '[DONE]') continue;
             try {
               const data = JSON.parse(dataStr);
               console.log('[API Stream Data]', data);
-
               if (data.error) {
                 console.error('[API Error] 流式接口返回错误:', data.error);
                 onError(data.error);
                 continue;
               }
-
               onStream(data as StreamData);
             } catch (e) {
               console.error('[API Error] 解析数据失败:', e, 'Data:', dataStr);
