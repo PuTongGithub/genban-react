@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useModels, useChat } from '../../hooks';
 import { ChatHeader } from './ChatHeader';
 import { MessageList } from './MessageList';
-import { ChatInput } from './ChatInput';
+import { ChatInput, type ChatInputRef } from './ChatInput';
 import { ErrorBanner } from './ErrorBanner';
 import './ChatAssistant.css';
 
@@ -31,8 +31,9 @@ export function ChatAssistant() {
   } = useChat({ selectedModel });
   
   const [inputValue, setInputValue] = useState('');
-  const [isReasoningExpanded, setIsReasoningExpanded] = useState(true);
   const initializedRef = useRef(false);
+  const chatInputRef = useRef<ChatInputRef>(null);
+  const prevIsLoadingRef = useRef(isLoading);
 
   const hasError = modelsError || chatError;
   const isOffline = modelsOffline || chatOffline;
@@ -42,6 +43,13 @@ export function ChatAssistant() {
     initializedRef.current = true;
     createSession();
   }, [createSession]);
+
+  useEffect(() => {
+    if (prevIsLoadingRef.current && !isLoading) {
+      chatInputRef.current?.focus();
+    }
+    prevIsLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
@@ -90,10 +98,9 @@ export function ChatAssistant() {
       <MessageList
         messages={messages}
         isLoading={isLoading}
-        isReasoningExpanded={isReasoningExpanded}
-        onToggleReasoning={() => setIsReasoningExpanded(!isReasoningExpanded)}
       />
       <ChatInput
+        ref={chatInputRef}
         value={inputValue}
         isLoading={isLoading || modelsLoading}
         disabled={!sessionId || isOffline}

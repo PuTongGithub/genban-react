@@ -27,6 +27,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
   const [isOffline, setIsOffline] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef<string>('');
+  const lastRoleRef = useRef<'assistant' | 'tool'>('assistant');
 
   const createSession = useCallback(async () => {
     try {
@@ -47,10 +48,10 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
     }
   }, []);
 
-  const updateLastAssistantMessage = useCallback((updater: (msg: Message) => Message) => {
+  const updateLastMessage = useCallback((role: 'assistant' | 'tool', updater: (msg: Message) => Message) => {
     setMessages(prev => {
       const lastMessage = prev[prev.length - 1];
-      if (lastMessage && lastMessage.role === 'assistant') {
+      if (lastMessage && lastMessage.role === role) {
         return [...prev.slice(0, -1), updater(lastMessage)];
       }
       return prev;
@@ -58,25 +59,51 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
   }, []);
 
   const handleStreamData = useCallback((data: StreamData) => {
-    updateLastAssistantMessage(() => ({
-      role: 'assistant',
-      content: data.content || '',
-      reasoningContent: data.reasoning_content || '',
-    }));
-  }, [updateLastAssistantMessage]);
+    const role = data.role;
+    
+    if (role === 'tool') {
+      if (lastRoleRef.current !== 'tool') {
+        setMessages(prev => [
+          ...prev,
+          { role: 'tool', content: data.content || '' },
+        ]);
+      } else {
+        setMessages(prev => [
+          ...prev,
+          { role: 'tool', content: data.content || '' },
+        ]);
+      }
+      lastRoleRef.current = 'tool';
+    } else {
+      if (lastRoleRef.current === 'tool') {
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: data.content || '', reasoningContent: data.reasoning_content || '' },
+        ]);
+      } else {
+        updateLastMessage('assistant', () => ({
+          role: 'assistant',
+          content: data.content || '',
+          reasoningContent: data.reasoning_content || '',
+        }));
+      }
+      lastRoleRef.current = 'assistant';
+    }
+  }, [updateLastMessage]);
 
   const handleStreamError = useCallback((error: string) => {
-    updateLastAssistantMessage(msg => ({
+    updateLastMessage('assistant', msg => ({
       ...msg,
       content: `❌ 错误：${error}`,
     }));
-  }, [updateLastAssistantMessage]);
+  }, [updateLastMessage]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || !sessionId || !selectedModel || isLoading) return;
 
     const userMessage = content.trim();
     lastMessageRef.current = userMessage;
+    lastRoleRef.current = 'assistant';
     setIsLoading(true);
     setError(null);
     setIsOffline(false);
@@ -107,12 +134,12 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
         }
         if (err.code === ApiErrorCode.NETWORK_ERROR || err.code === ApiErrorCode.TIMEOUT) {
           setIsOffline(true);
-          updateLastAssistantMessage(() => ({
+          updateLastMessage('assistant', () => ({
             role: 'assistant',
             content: '🌐 网络连接失败，请检查网络后重试。',
           }));
         } else {
-          updateLastAssistantMessage(() => ({
+          updateLastMessage('assistant', () => ({
             role: 'assistant',
             content: `❌ ${err.message}`,
           }));
@@ -121,7 +148,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
       } else {
         const errorMsg = '发送消息失败，请稍后重试。';
         setError(errorMsg);
-        updateLastAssistantMessage(() => ({
+        updateLastMessage('assistant', () => ({
           role: 'assistant',
           content: `❌ ${errorMsg}`,
         }));
@@ -130,7 +157,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [sessionId, selectedModel, isLoading, handleStreamData, handleStreamError, updateLastAssistantMessage]);
+  }, [sessionId, selectedModel, isLoading, handleStreamData, handleStreamError, updateLastMessage]);
 
   const retryLastMessage = useCallback(async () => {
     if (lastMessageRef.current) {
@@ -149,6 +176,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
     setError(null);
     setIsOffline(false);
     lastMessageRef.current = '';
+    lastRoleRef.current = 'assistant';
     return createSession();
   }, [createSession]);
 

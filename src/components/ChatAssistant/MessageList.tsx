@@ -5,15 +5,22 @@ import { MessageItem } from './MessageItem';
 interface MessageListProps {
   messages: Message[];
   isLoading: boolean;
-  isReasoningExpanded: boolean;
-  onToggleReasoning: () => void;
+}
+
+function shouldShowMessage(message: Message): boolean {
+  if (message.role === 'user' || message.role === 'tool') {
+    return true;
+  }
+  
+  const hasContent = message.content && message.content.trim();
+  const hasReasoning = message.reasoningContent && message.reasoningContent.trim();
+  
+  return !!(hasContent || hasReasoning);
 }
 
 export function MessageList({
   messages,
   isLoading,
-  isReasoningExpanded,
-  onToggleReasoning,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -21,7 +28,9 @@ export function MessageList({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  if (messages.length === 0) {
+  const visibleMessages = messages.filter(shouldShowMessage);
+
+  if (visibleMessages.length === 0) {
     return (
       <div className="messages-container">
         <div className="empty-state">
@@ -35,14 +44,12 @@ export function MessageList({
 
   return (
     <div className="messages-container">
-      {messages.map((message, index) => (
+      {visibleMessages.map((message, index) => (
         <MessageItem
           key={index}
           message={message}
           isLoading={isLoading}
-          isLast={index === messages.length - 1}
-          isReasoningExpanded={isReasoningExpanded}
-          onToggleReasoning={onToggleReasoning}
+          isLast={index === visibleMessages.length - 1}
         />
       ))}
       <div ref={messagesEndRef} />

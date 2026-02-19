@@ -1,13 +1,13 @@
 export interface Message {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'tool';
   content: string;
   reasoningContent?: string;
 }
 
 export interface StreamData {
-  role: 'user' | 'assistant';
+  role: 'assistant' | 'tool';
   content: string;
-  reasoning_content: string;
+  reasoning_content?: string;
 }
 
 export interface TalkRequest {
