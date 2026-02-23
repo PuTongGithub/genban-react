@@ -6,7 +6,6 @@ type ErrorCallback = (error: string) => void;
 
 export const ApiErrorCode = {
   NETWORK_ERROR: 'NETWORK_ERROR',
-  TIMEOUT: 'TIMEOUT',
   SERVER_ERROR: 'SERVER_ERROR',
   PARSE_ERROR: 'PARSE_ERROR',
   ABORTED: 'ABORTED',
@@ -27,28 +26,17 @@ export class ApiError extends Error {
   }
 }
 
-const DEFAULT_TIMEOUT = 30000;
-
 class ChatApi {
-  private async fetchWithTimeout(
+  private async fetchWithErrorHandling(
     url: string,
-    options: RequestInit = {},
-    timeout: number = DEFAULT_TIMEOUT
+    options: RequestInit = {}
   ): Promise<Response> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
     try {
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      const response = await fetch(url, options);
       return response;
     } catch (error) {
-      clearTimeout(timeoutId);
       if (error instanceof DOMException && error.name === 'AbortError') {
-        throw new ApiError('请求超时，请检查网络连接', ApiErrorCode.TIMEOUT);
+        throw new ApiError('请求已取消', ApiErrorCode.ABORTED);
       }
       throw new ApiError('网络连接失败，请检查网络设置', ApiErrorCode.NETWORK_ERROR);
     }
@@ -64,30 +52,11 @@ class ChatApi {
     throw new ApiError('未知响应错误', ApiErrorCode.UNKNOWN, response.status);
   }
 
-  async getModels(): Promise<string[]> {
-    console.log('[API Request] GET', `${API_BASE}/get_models`);
-    try {
-      const response = await this.fetchWithTimeout(`${API_BASE}/get_models`);
-      
-      if (!response.ok) {
-        this.handleResponseError(response);
-      }
-
-      const data = await response.json();
-      console.log('[API Response] GET', `${API_BASE}/get_models`, '=>', data);
-      return data;
-    } catch (error) {
-      console.error('[API Error] GET', `${API_BASE}/get_models`, '=>', error);
-      if (error instanceof ApiError) throw error;
-      throw new ApiError('获取模型列表失败', ApiErrorCode.UNKNOWN);
-    }
-  }
-
   async createSession(): Promise<string> {
     console.log('[API Request] GET', `${API_BASE}/new_session`);
     try {
-      const response = await this.fetchWithTimeout(`${API_BASE}/new_session`);
-      
+      const response = await this.fetchWithErrorHandling(`${API_BASE}/new_session`);
+
       if (!response.ok) {
         this.handleResponseError(response);
       }
@@ -111,7 +80,7 @@ class ChatApi {
     console.log('[API Request] POST', `${API_BASE}/talk`, '=>', request);
 
     try {
-      const response = await this.fetchWithTimeout(
+      const response = await this.fetchWithErrorHandling(
         `${API_BASE}/talk`,
         {
           method: 'POST',
@@ -121,10 +90,9 @@ class ChatApi {
           body: JSON.stringify({
             session_id: request.session_id,
             user_input: request.user_input,
-            model: request.model,
           }),
-        },
-        60000
+          signal,
+        }
       );
 
       console.log('[API Response] POST', `${API_BASE}/talk`, 'Status:', response.status);
@@ -177,20 +145,20 @@ class ChatApi {
 
         for (const line of lines) {
           const trimmedLine = line.trim();
-          
+
           if (trimmedLine.startsWith('event:')) {
             currentEvent = trimmedLine.slice(6).trim();
             continue;
           }
-          
+
           if (trimmedLine.startsWith('data:')) {
             const dataStr = trimmedLine.slice(5).trim();
-            
+
             if (currentEvent === 'complete') {
               console.log('[API] 收到 complete 事件');
               return;
             }
-            
+
             if (currentEvent === 'error') {
               try {
                 const data = JSON.parse(dataStr);
@@ -202,7 +170,7 @@ class ChatApi {
               }
               continue;
             }
-            
+
             if (currentEvent === 'message') {
               if (!dataStr) continue;
               try {
@@ -214,7 +182,7 @@ class ChatApi {
               }
               continue;
             }
-            
+
             if (!dataStr || dataStr === '[DONE]') continue;
             try {
               const data = JSON.parse(dataStr);
@@ -238,7 +206,7 @@ class ChatApi {
 
   async checkConnection(): Promise<boolean> {
     try {
-      const response = await this.fetchWithTimeout(`${API_BASE}/get_models`, {}, 5000);
+      const response = await this.fetchWithErrorHandling(`${API_BASE}/new_session`);
       return response.ok;
     } catch {
       return false;

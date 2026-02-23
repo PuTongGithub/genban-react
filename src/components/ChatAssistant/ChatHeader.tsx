@@ -1,16 +1,10 @@
 interface ChatHeaderProps {
-  models: string[];
-  selectedModel: string;
   isLoading: boolean;
-  onModelChange: (model: string) => void;
   onNewChat: () => void;
 }
 
 export function ChatHeader({
-  models,
-  selectedModel,
   isLoading,
-  onModelChange,
   onNewChat,
 }: ChatHeaderProps) {
   return (
@@ -19,19 +13,6 @@ export function ChatHeader({
         <h1 className="chat-title">AI 聊天助手</h1>
       </div>
       <div className="header-right">
-        <select
-          className="model-select"
-          value={selectedModel}
-          onChange={(e) => onModelChange(e.target.value)}
-          disabled={isLoading}
-        >
-          {models.map((model) => (
-            <option key={model} value={model}>
-              {model}
-            </option>
-          ))}
-        </select>
-        
         <button
           className="new-chat-btn"
           onClick={onNewChat}

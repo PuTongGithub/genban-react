@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useModels, useChat } from '../../hooks';
+import { useChat } from '../../hooks';
 import { ChatHeader } from './ChatHeader';
 import { MessageList } from './MessageList';
 import { ChatInput, type ChatInputRef } from './ChatInput';
@@ -7,36 +7,26 @@ import { ErrorBanner } from './ErrorBanner';
 import './ChatAssistant.css';
 
 export function ChatAssistant() {
-  const { 
-    models, 
-    selectedModel, 
-    setSelectedModel, 
-    isLoading: modelsLoading,
-    error: modelsError, 
-    refetch: refetchModels,
-    isOffline: modelsOffline 
-  } = useModels();
-  
-  const { 
-    messages, 
-    isLoading, 
-    sessionId, 
+  const {
+    messages,
+    isLoading,
+    sessionId,
     error: chatError,
     isOffline: chatOffline,
-    sendMessage, 
-    clearMessages, 
+    sendMessage,
+    clearMessages,
     createSession,
     clearError,
-    retryLastMessage 
-  } = useChat({ selectedModel });
-  
+    retryLastMessage
+  } = useChat();
+
   const [inputValue, setInputValue] = useState('');
   const initializedRef = useRef(false);
   const chatInputRef = useRef<ChatInputRef>(null);
   const prevIsLoadingRef = useRef(isLoading);
 
-  const hasError = modelsError || chatError;
-  const isOffline = modelsOffline || chatOffline;
+  const hasError = chatError;
+  const isOffline = chatOffline;
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -63,12 +53,7 @@ export function ChatAssistant() {
   };
 
   const handleRetry = async () => {
-    if (modelsError) {
-      await refetchModels();
-      if (!sessionId) {
-        await createSession();
-      }
-    } else if (chatError) {
+    if (chatError) {
       clearError();
       await retryLastMessage();
     }
@@ -82,17 +67,14 @@ export function ChatAssistant() {
     <div className="chat-container">
       {hasError && (
         <ErrorBanner
-          message={modelsError || chatError || '发生错误'}
+          message={chatError || '发生错误'}
           isOffline={isOffline}
           onRetry={handleRetry}
           onDismiss={handleDismissError}
         />
       )}
       <ChatHeader
-        models={models}
-        selectedModel={selectedModel}
-        isLoading={isLoading || modelsLoading}
-        onModelChange={setSelectedModel}
+        isLoading={isLoading}
         onNewChat={handleNewChat}
       />
       <MessageList
@@ -102,7 +84,7 @@ export function ChatAssistant() {
       <ChatInput
         ref={chatInputRef}
         value={inputValue}
-        isLoading={isLoading || modelsLoading}
+        isLoading={isLoading}
         disabled={!sessionId || isOffline}
         onChange={setInputValue}
         onSend={handleSend}

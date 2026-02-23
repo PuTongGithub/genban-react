@@ -38,38 +38,6 @@
   gap: 12px;
 }
 
-/* 模型选择下拉框 */
-.model-select {
-  padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: #e0e0e0;
-  font-size: 14px;
-  cursor: pointer;
-  outline: none;
-  transition: all 0.2s;
-}
-
-.model-select:hover {
-  border-color: rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.15);
-}
-
-.model-select:focus {
-  border-color: #667eea;
-}
-
-.model-select:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.model-select option {
-  background: #1a1a2e;
-  color: #e0e0e0;
-}
-
 /* 新建对话按钮 */
 .new-chat-btn {
   display: flex;

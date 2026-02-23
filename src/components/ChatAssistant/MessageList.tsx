@@ -11,10 +11,10 @@ function shouldShowMessage(message: Message): boolean {
   if (message.role === 'user' || message.role === 'tool') {
     return true;
   }
-  
+
   const hasContent = message.content && message.content.trim();
   const hasReasoning = message.reasoningContent && message.reasoningContent.trim();
-  
+
   return !!(hasContent || hasReasoning);
 }
 
@@ -23,8 +23,31 @@ export function MessageList({
   isLoading,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
 
   useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const threshold = 50;
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+      isAtBottomRef.current = isAtBottom;
+    };
+
+    container.addEventListener('scroll', handleScroll);
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAtBottomRef.current) {
+      return;
+    }
+
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
@@ -32,7 +55,7 @@ export function MessageList({
 
   if (visibleMessages.length === 0) {
     return (
-      <div className="messages-container">
+      <div className="messages-container" ref={containerRef}>
         <div className="empty-state">
           <div className="empty-icon">💬</div>
           <p>开始一个新的对话吧</p>
@@ -43,7 +66,7 @@ export function MessageList({
   }
 
   return (
-    <div className="messages-container">
+    <div className="messages-container" ref={containerRef}>
       {visibleMessages.map((message, index) => (
         <MessageItem
           key={index}

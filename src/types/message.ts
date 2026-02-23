@@ -13,5 +13,4 @@ export interface StreamData {
 export interface TalkRequest {
   session_id: string;
   user_input: string;
-  model: string;
 }

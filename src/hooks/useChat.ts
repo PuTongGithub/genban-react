@@ -2,10 +2,6 @@ import { useState, useCallback, useRef } from 'react';
 import { chatApi, ApiError, ApiErrorCode } from '../api';
 import type { Message, StreamData } from '../types';
 
-interface UseChatOptions {
-  selectedModel: string;
-}
-
 export interface UseChatReturn {
   sessionId: string | null;
   messages: Message[];
@@ -19,7 +15,7 @@ export interface UseChatReturn {
   retryLastMessage: () => Promise<void>;
 }
 
-export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
+export function useChat(): UseChatReturn {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +33,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
       return id;
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.code === ApiErrorCode.NETWORK_ERROR || err.code === ApiErrorCode.TIMEOUT) {
+        if (err.code === ApiErrorCode.NETWORK_ERROR) {
           setIsOffline(true);
         }
         setError(err.message);
@@ -60,7 +56,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
 
   const handleStreamData = useCallback((data: StreamData) => {
     const role = data.role;
-    
+
     if (role === 'tool') {
       if (lastRoleRef.current !== 'tool') {
         setMessages(prev => [
@@ -99,7 +95,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
   }, [updateLastMessage]);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || !sessionId || !selectedModel || isLoading) return;
+    if (!content.trim() || !sessionId || isLoading) return;
 
     const userMessage = content.trim();
     lastMessageRef.current = userMessage;
@@ -121,7 +117,6 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
         {
           session_id: sessionId,
           user_input: userMessage,
-          model: selectedModel,
         },
         handleStreamData,
         handleStreamError,
@@ -132,7 +127,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
         if (err.code === ApiErrorCode.ABORTED) {
           return;
         }
-        if (err.code === ApiErrorCode.NETWORK_ERROR || err.code === ApiErrorCode.TIMEOUT) {
+        if (err.code === ApiErrorCode.NETWORK_ERROR) {
           setIsOffline(true);
           updateLastMessage('assistant', () => ({
             role: 'assistant',
@@ -157,7 +152,7 @@ export function useChat({ selectedModel }: UseChatOptions): UseChatReturn {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [sessionId, selectedModel, isLoading, handleStreamData, handleStreamError, updateLastMessage]);
+  }, [sessionId, isLoading, handleStreamData, handleStreamError, updateLastMessage]);
 
   const retryLastMessage = useCallback(async () => {
     if (lastMessageRef.current) {
