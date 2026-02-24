@@ -14,8 +14,9 @@ function shouldShowMessage(message: Message): boolean {
 
   const hasContent = message.content && message.content.trim();
   const hasReasoning = message.reasoningContent && message.reasoningContent.trim();
+  const hasToolCalls = message.toolCalls && message.toolCalls.length > 0;
 
-  return !!(hasContent || hasReasoning);
+  return !!(hasContent || hasReasoning || hasToolCalls);
 }
 
 export function MessageList({
