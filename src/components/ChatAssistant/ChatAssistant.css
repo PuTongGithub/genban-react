@@ -69,6 +69,31 @@
   height: 16px;
 }
 
+/* 退出登录按钮 */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.logout-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #ef4444;
+}
+
+.logout-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 /* 消息列表容器 */
 .messages-container {
   flex: 1;

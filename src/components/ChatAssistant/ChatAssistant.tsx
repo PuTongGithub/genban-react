@@ -6,33 +6,29 @@ import { ChatInput, type ChatInputRef } from './ChatInput';
 import { ErrorBanner } from './ErrorBanner';
 import './ChatAssistant.css';
 
-export function ChatAssistant() {
+export interface ChatAssistantProps {
+  token: string;
+  onLogout: () => void;
+}
+
+export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
   const {
     messages,
     isLoading,
-    sessionId,
     error: chatError,
     isOffline: chatOffline,
     sendMessage,
     clearMessages,
-    createSession,
     clearError,
     retryLastMessage
-  } = useChat();
+  } = useChat(onLogout);
 
   const [inputValue, setInputValue] = useState('');
-  const initializedRef = useRef(false);
   const chatInputRef = useRef<ChatInputRef>(null);
   const prevIsLoadingRef = useRef(isLoading);
 
   const hasError = chatError;
   const isOffline = chatOffline;
-
-  useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-    createSession();
-  }, [createSession]);
 
   useEffect(() => {
     if (prevIsLoadingRef.current && !isLoading) {
@@ -43,19 +39,19 @@ export function ChatAssistant() {
 
   const handleSend = () => {
     if (!inputValue.trim()) return;
-    sendMessage(inputValue);
+    sendMessage(inputValue, token);
     setInputValue('');
   };
 
-  const handleNewChat = async () => {
+  const handleNewChat = () => {
     setInputValue('');
-    await clearMessages();
+    clearMessages();
   };
 
   const handleRetry = async () => {
     if (chatError) {
       clearError();
-      await retryLastMessage();
+      await retryLastMessage(token);
     }
   };
 
@@ -76,6 +72,7 @@ export function ChatAssistant() {
       <ChatHeader
         isLoading={isLoading}
         onNewChat={handleNewChat}
+        onLogout={onLogout}
       />
       <MessageList
         messages={messages}
@@ -85,7 +82,7 @@ export function ChatAssistant() {
         ref={chatInputRef}
         value={inputValue}
         isLoading={isLoading}
-        disabled={!sessionId || isOffline}
+        disabled={isOffline}
         onChange={setInputValue}
         onSend={handleSend}
       />

@@ -3,20 +3,17 @@ import { chatApi, ApiError, ApiErrorCode } from '../api';
 import type { Message, StreamData } from '../types';
 
 export interface UseChatReturn {
-  sessionId: string | null;
   messages: Message[];
   isLoading: boolean;
   error: string | null;
   isOffline: boolean;
-  sendMessage: (content: string) => Promise<void>;
-  clearMessages: () => Promise<string | null>;
-  createSession: () => Promise<string | null>;
+  sendMessage: (content: string, token: string) => Promise<void>;
+  clearMessages: () => void;
   clearError: () => void;
-  retryLastMessage: () => Promise<void>;
+  retryLastMessage: (token: string) => Promise<void>;
 }
 
-export function useChat(): UseChatReturn {
-  const [sessionId, setSessionId] = useState<string | null>(null);
+export function useChat(onAuthError?: () => void): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,25 +21,6 @@ export function useChat(): UseChatReturn {
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastMessageRef = useRef<string>('');
   const currentMessageIdRef = useRef<string | null>(null);
-
-  const createSession = useCallback(async () => {
-    try {
-      setError(null);
-      const id = await chatApi.createSession();
-      setSessionId(id);
-      return id;
-    } catch (err) {
-      if (err instanceof ApiError) {
-        if (err.code === ApiErrorCode.NETWORK_ERROR) {
-          setIsOffline(true);
-        }
-        setError(err.message);
-      } else {
-        setError('创建会话失败');
-      }
-      return null;
-    }
-  }, []);
 
   const handleStreamData = useCallback((data: StreamData) => {
     const { role, id, content, reasoning_content, tool_calls, source } = data;
@@ -114,8 +92,8 @@ export function useChat(): UseChatReturn {
     currentMessageIdRef.current = null;
   }, []);
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || !sessionId || isLoading) return;
+  const sendMessage = useCallback(async (content: string, token: string) => {
+    if (!content.trim() || isLoading) return;
 
     const userMessage = content.trim();
     lastMessageRef.current = userMessage;
@@ -135,9 +113,9 @@ export function useChat(): UseChatReturn {
     try {
       await chatApi.sendMessage(
         {
-          session_id: sessionId,
           user_input: userMessage,
         },
+        token,
         handleStreamData,
         handleStreamError,
         abortControllerRef.current.signal
@@ -145,6 +123,10 @@ export function useChat(): UseChatReturn {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.code === ApiErrorCode.ABORTED) {
+          return;
+        }
+        if (err.code === ApiErrorCode.UNAUTHORIZED) {
+          onAuthError?.();
           return;
         }
         if (err.code === ApiErrorCode.NETWORK_ERROR) {
@@ -190,16 +172,16 @@ export function useChat(): UseChatReturn {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [sessionId, isLoading, handleStreamData, handleStreamError]);
+  }, [isLoading, handleStreamData, handleStreamError, onAuthError]);
 
-  const retryLastMessage = useCallback(async () => {
+  const retryLastMessage = useCallback(async (token: string) => {
     if (lastMessageRef.current) {
       setMessages(prev => prev.slice(0, -2));
-      await sendMessage(lastMessageRef.current);
+      await sendMessage(lastMessageRef.current, token);
     }
   }, [sendMessage]);
 
-  const clearMessages = useCallback(async () => {
+  const clearMessages = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -210,8 +192,7 @@ export function useChat(): UseChatReturn {
     setIsOffline(false);
     lastMessageRef.current = '';
     currentMessageIdRef.current = null;
-    return createSession();
-  }, [createSession]);
+  }, []);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -219,14 +200,12 @@ export function useChat(): UseChatReturn {
   }, []);
 
   return {
-    sessionId,
     messages,
     isLoading,
     error,
     isOffline,
     sendMessage,
     clearMessages,
-    createSession,
     clearError,
     retryLastMessage,
   };

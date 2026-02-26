@@ -9,6 +9,7 @@ export const ApiErrorCode = {
   SERVER_ERROR: 'SERVER_ERROR',
   PARSE_ERROR: 'PARSE_ERROR',
   ABORTED: 'ABORTED',
+  UNAUTHORIZED: 'UNAUTHORIZED',
   UNKNOWN: 'UNKNOWN',
 } as const;
 
@@ -43,6 +44,9 @@ class ChatApi {
   }
 
   private handleResponseError(response: Response): never {
+    if (response.status === 401) {
+      throw new ApiError('未授权，请重新登录', ApiErrorCode.UNAUTHORIZED, response.status);
+    }
     if (response.status >= 500) {
       throw new ApiError(`服务器错误 (${response.status})`, ApiErrorCode.SERVER_ERROR, response.status);
     }
@@ -52,27 +56,9 @@ class ChatApi {
     throw new ApiError('未知响应错误', ApiErrorCode.UNKNOWN, response.status);
   }
 
-  async createSession(): Promise<string> {
-    console.log('[API Request] GET', `${API_BASE}/new_session`);
-    try {
-      const response = await this.fetchWithErrorHandling(`${API_BASE}/new_session`);
-
-      if (!response.ok) {
-        this.handleResponseError(response);
-      }
-
-      const data = await response.json();
-      console.log('[API Response] GET', `${API_BASE}/new_session`, '=>', data);
-      return data;
-    } catch (error) {
-      console.error('[API Error] GET', `${API_BASE}/new_session`, '=>', error);
-      if (error instanceof ApiError) throw error;
-      throw new ApiError('创建会话失败', ApiErrorCode.UNKNOWN);
-    }
-  }
-
   async sendMessage(
     request: TalkRequest,
+    token: string,
     onStream: StreamCallback,
     onError: ErrorCallback,
     signal?: AbortSignal
@@ -86,9 +72,9 @@ class ChatApi {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify({
-            session_id: request.session_id,
             user_input: request.user_input,
           }),
           signal,
@@ -201,15 +187,6 @@ class ChatApi {
       }
     } finally {
       reader.releaseLock();
-    }
-  }
-
-  async checkConnection(): Promise<boolean> {
-    try {
-      const response = await this.fetchWithErrorHandling(`${API_BASE}/new_session`);
-      return response.ok;
-    } catch {
-      return false;
     }
   }
 }
