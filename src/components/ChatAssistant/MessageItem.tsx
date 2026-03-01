@@ -67,11 +67,13 @@ export function MessageItem({
   const showTypingIndicator = isLoading && isLast && message.role === 'assistant' && !message.content && !message.reasoningContent;
 
   const isCommand = message.source === 'command';
+  const isError = message.source === 'error';
 
   const getMessageClass = () => {
     if (message.role === 'user') return 'user-message';
     if (message.role === 'tool') return 'tool-message';
     if (isCommand) return 'command-message';
+    if (isError) return 'error-message';
     return 'assistant-message';
   };
 
@@ -79,6 +81,7 @@ export function MessageItem({
     if (message.role === 'user') return '👤';
     if (message.role === 'tool') return '🔧';
     if (isCommand) return '⚙️';
+    if (isError) return '⚠️';
     return '🤖';
   };
 

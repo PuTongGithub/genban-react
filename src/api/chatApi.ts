@@ -1,8 +1,9 @@
 import { API_BASE } from '../constants';
-import type { TalkRequest, StreamData } from '../types';
+import type { SubmitRequest, SubmitResponse, StreamData } from '../types';
 
 type StreamCallback = (data: StreamData) => void;
 type ErrorCallback = (error: string) => void;
+type CompleteCallback = () => void;
 
 export const ApiErrorCode = {
   NETWORK_ERROR: 'NETWORK_ERROR',
@@ -56,32 +57,54 @@ class ChatApi {
     throw new ApiError('未知响应错误', ApiErrorCode.UNKNOWN, response.status);
   }
 
-  async sendMessage(
-    request: TalkRequest,
+  async submit(request: SubmitRequest, token: string): Promise<SubmitResponse> {
+    console.log('[API Request] POST', `${API_BASE}/submit`, '=>', request);
+    try {
+      const response = await this.fetchWithErrorHandling(`${API_BASE}/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(request),
+      });
+
+      if (!response.ok) {
+        this.handleResponseError(response);
+      }
+
+      const data: SubmitResponse = await response.json();
+      console.log('[API Response] POST', `${API_BASE}/submit`, '=>', data);
+      return data;
+    } catch (error) {
+      console.error('[API Error] POST', `${API_BASE}/submit`, '=>', error);
+      if (error instanceof ApiError) throw error;
+      throw new ApiError('提交消息失败', ApiErrorCode.UNKNOWN);
+    }
+  }
+
+  async connectStream(
     token: string,
     onStream: StreamCallback,
     onError: ErrorCallback,
+    onComplete: CompleteCallback,
     signal?: AbortSignal
   ): Promise<void> {
-    console.log('[API Request] POST', `${API_BASE}/talk`, '=>', request);
+    console.log('[API Request] POST', `${API_BASE}/stream`, 'Establishing SSE connection...');
 
     try {
       const response = await this.fetchWithErrorHandling(
-        `${API_BASE}/talk`,
+        `${API_BASE}/stream`,
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            user_input: request.user_input,
-          }),
           signal,
         }
       );
 
-      console.log('[API Response] POST', `${API_BASE}/talk`, 'Status:', response.status);
+      console.log('[API Response] POST', `${API_BASE}/stream`, 'Status:', response.status);
 
       if (!response.ok) {
         this.handleResponseError(response);
@@ -91,16 +114,15 @@ class ChatApi {
         throw new ApiError('响应体为空', ApiErrorCode.SERVER_ERROR);
       }
 
-      await this.processStream(response.body, onStream, onError, signal);
-      console.log('[API] 流式响应结束');
+      await this.processStream(response.body, onStream, onError, onComplete, signal);
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {
-        console.log('[API] 请求被取消');
+        console.log('[API] 连接被取消');
         throw new ApiError('请求已取消', ApiErrorCode.ABORTED);
       }
-      console.error('[API Error] POST', `${API_BASE}/talk`, '=>', error);
+      console.error('[API Error] POST', `${API_BASE}/stream`, '=>', error);
       if (error instanceof ApiError) throw error;
-      throw new ApiError('发送消息失败', ApiErrorCode.UNKNOWN);
+      throw new ApiError('连接流式接口失败', ApiErrorCode.UNKNOWN);
     }
   }
 
@@ -108,6 +130,7 @@ class ChatApi {
     body: ReadableStream<Uint8Array>,
     onStream: StreamCallback,
     onError: ErrorCallback,
+    onComplete: CompleteCallback,
     signal?: AbortSignal
   ): Promise<void> {
     const reader = body.getReader();
@@ -142,7 +165,8 @@ class ChatApi {
 
             if (currentEvent === 'complete') {
               console.log('[API] 收到 complete 事件');
-              return;
+              onComplete();
+              continue;
             }
 
             if (currentEvent === 'error') {

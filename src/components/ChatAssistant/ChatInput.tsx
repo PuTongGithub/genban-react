@@ -2,8 +2,8 @@ import { forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
 
 interface ChatInputProps {
   value: string;
-  isLoading: boolean;
   disabled: boolean;
+  placeholder?: string;
   onChange: (value: string) => void;
   onSend: () => void;
 }
@@ -13,7 +13,7 @@ export interface ChatInputRef {
 }
 
 export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
-  ({ value, isLoading, disabled, onChange, onSend }, ref) => {
+  ({ value, disabled, placeholder = "输入消息...", onChange, onSend }, ref) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -53,14 +53,14 @@ export const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="输入消息..."
+            placeholder={placeholder}
             rows={1}
-            disabled={isLoading}
+            disabled={disabled}
           />
           <button
             className="send-btn"
             onClick={onSend}
-            disabled={!value.trim() || isLoading || disabled}
+            disabled={!value.trim() || disabled}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />

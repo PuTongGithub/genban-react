@@ -10,18 +10,22 @@ export interface Message {
   content: string;
   reasoningContent?: string;
   toolCalls?: ToolCall[];
-  source?: 'assistant' | 'tool' | 'command';
+  source?: 'user' | 'assistant' | 'tool' | 'command' | 'error';
 }
 
 export interface StreamData {
-  source: 'assistant' | 'tool' | 'command';
+  type: 'user' | 'assistant' | 'tool' | 'command' | 'error';
   id: string;
-  role: 'assistant' | 'tool';
+  role: 'user' | 'assistant' | 'tool';
   content: string;
   reasoning_content?: string;
   tool_calls?: ToolCall[] | null;
 }
 
-export interface TalkRequest {
+export interface SubmitRequest {
   user_input: string;
+}
+
+export interface SubmitResponse {
+  chat_id: string;
 }

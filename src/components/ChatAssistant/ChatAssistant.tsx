@@ -15,20 +15,29 @@ export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
   const {
     messages,
     isLoading,
+    isConnected,
     error: chatError,
     isOffline: chatOffline,
     sendMessage,
-    clearMessages,
     clearError,
-    retryLastMessage
+    connect,
   } = useChat(onLogout);
 
   const [inputValue, setInputValue] = useState('');
   const chatInputRef = useRef<ChatInputRef>(null);
   const prevIsLoadingRef = useRef(isLoading);
+  const hasConnectedRef = useRef(false);
 
   const hasError = chatError;
   const isOffline = chatOffline;
+
+  // 只在token首次变化时建立连接，避免React StrictMode的双重渲染问题
+  useEffect(() => {
+    if (!hasConnectedRef.current) {
+      hasConnectedRef.current = true;
+      connect(token);
+    }
+  }, [token, connect]);
 
   useEffect(() => {
     if (prevIsLoadingRef.current && !isLoading) {
@@ -38,21 +47,9 @@ export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
   }, [isLoading]);
 
   const handleSend = () => {
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || !isConnected) return;
     sendMessage(inputValue, token);
     setInputValue('');
-  };
-
-  const handleNewChat = () => {
-    setInputValue('');
-    clearMessages();
-  };
-
-  const handleRetry = async () => {
-    if (chatError) {
-      clearError();
-      await retryLastMessage(token);
-    }
   };
 
   const handleDismissError = () => {
@@ -65,13 +62,12 @@ export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
         <ErrorBanner
           message={chatError || '发生错误'}
           isOffline={isOffline}
-          onRetry={handleRetry}
+          onRetry={() => connect(token)}
           onDismiss={handleDismissError}
         />
       )}
       <ChatHeader
-        isLoading={isLoading}
-        onNewChat={handleNewChat}
+        isConnected={isConnected}
         onLogout={onLogout}
       />
       <MessageList
@@ -81,8 +77,8 @@ export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
       <ChatInput
         ref={chatInputRef}
         value={inputValue}
-        isLoading={isLoading}
-        disabled={isOffline}
+        disabled={!isConnected}
+        placeholder={!isConnected ? "连接中..." : "输入消息..."}
         onChange={setInputValue}
         onSend={handleSend}
       />
