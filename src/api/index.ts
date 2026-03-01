@@ -1,3 +1,4 @@
-export { chatApi, ApiError, ApiErrorCode } from './chatApi';
-export type { ApiErrorCodeType } from './chatApi';
+export { chatApi } from './chatApi';
 export { authApi } from './authApi';
+export { httpClient, ApiError } from './client';
+export type { ErrorCode } from './client';

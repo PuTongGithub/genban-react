@@ -184,12 +184,12 @@ export function MessageItem({
             )}
           </div>
         )}
-        {hasToolCalls && <ToolCallsPanel toolCalls={message.toolCalls} />}
         {hasContent && (
           <div className="message-content">
             {message.content}
           </div>
         )}
+        {hasToolCalls && <ToolCallsPanel toolCalls={message.toolCalls} />}
         {showTypingIndicator && (
           <div className="message-content">
             <span className="typing-indicator">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useChat } from '../../hooks';
 import { ChatHeader } from './ChatHeader';
 import { MessageList } from './MessageList';
@@ -7,11 +7,21 @@ import { ErrorBanner } from './ErrorBanner';
 import './ChatAssistant.css';
 
 export interface ChatAssistantProps {
-  token: string;
   onLogout: () => void;
 }
 
-export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
+export function ChatAssistant({ onLogout }: ChatAssistantProps) {
+  // 使用 ref 稳定 onLogout 引用，避免 useChat 重新创建
+  const onLogoutRef = useRef(onLogout);
+  useEffect(() => {
+    onLogoutRef.current = onLogout;
+  }, [onLogout]);
+
+  // 使用稳定的回调
+  const stableOnLogout = useCallback(() => {
+    onLogoutRef.current();
+  }, []);
+
   const {
     messages,
     isLoading,
@@ -21,7 +31,7 @@ export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
     sendMessage,
     clearError,
     connect,
-  } = useChat(onLogout);
+  } = useChat(stableOnLogout);
 
   const [inputValue, setInputValue] = useState('');
   const chatInputRef = useRef<ChatInputRef>(null);
@@ -31,13 +41,15 @@ export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
   const hasError = chatError;
   const isOffline = chatOffline;
 
-  // 只在token首次变化时建立连接，避免React StrictMode的双重渲染问题
+  // 只在组件首次挂载时建立连接
   useEffect(() => {
     if (!hasConnectedRef.current) {
       hasConnectedRef.current = true;
-      connect(token);
+      connect();
     }
-  }, [token, connect]);
+    // 注意：不添加依赖，只在挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (prevIsLoadingRef.current && !isLoading) {
@@ -48,7 +60,7 @@ export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
 
   const handleSend = () => {
     if (!inputValue.trim() || !isConnected) return;
-    sendMessage(inputValue, token);
+    sendMessage(inputValue);
     setInputValue('');
   };
 
@@ -62,7 +74,7 @@ export function ChatAssistant({ token, onLogout }: ChatAssistantProps) {
         <ErrorBanner
           message={chatError || '发生错误'}
           isOffline={isOffline}
-          onRetry={() => connect(token)}
+          onRetry={() => connect()}
           onDismiss={handleDismissError}
         />
       )}

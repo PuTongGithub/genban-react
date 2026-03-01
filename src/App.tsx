@@ -3,7 +3,7 @@ import { Login } from './components/Login';
 import { ChatAssistant } from './components/ChatAssistant';
 
 function App() {
-  const { userInfo, isLoggedIn, isLoading, error, login, logout, clearError } = useAuth();
+  const { isLoggedIn, isLoading, error, login, logout, clearError } = useAuth();
 
   const handleLogin = async (userId: string, password: string): Promise<boolean> => {
     clearError();
@@ -22,7 +22,6 @@ function App() {
 
   return (
     <ChatAssistant
-      token={userInfo!.token}
       onLogout={logout}
     />
   );
